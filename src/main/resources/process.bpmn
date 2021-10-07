@@ -1,38 +1,247 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_0fr9mxs" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.8.1">
-  <bpmn:process id="vanilla-camunda-template-process" isExecutable="true">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_0fr9mxs" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.10.0">
+  <bpmn:collaboration id="Collaboration_0e80ief">
+    <bpmn:participant id="RequestProcessingParticipant" name="Request Processing" processRef="Process_RequestProcessing" />
+    <bpmn:participant id="ManualErrorHandlingParticipant" name="Manual Error Handling" processRef="Process_ManualErrorHandling" />
+    <bpmn:messageFlow id="Flow_19w6rm0" sourceRef="OriginalProcessEndedEndEvent" targetRef="ErrorHandlingCompletedEvent" />
+    <bpmn:messageFlow id="Flow_1tu2do5" sourceRef="StartErrorHandlingEvent" targetRef="BPMNErrorRequiresHandlingStartEvent" />
+    <bpmn:textAnnotation id="TextAnnotation_0ebyjv8">
+      <bpmn:text>The error handling process may send a message to let the process end, but usually would use the process instance modification API to cancel the token here and let the process continue from where the error occurred</bpmn:text>
+    </bpmn:textAnnotation>
+  </bpmn:collaboration>
+  <bpmn:process id="Process_RequestProcessing" name="Request Processing" isExecutable="true">
+    <bpmn:sequenceFlow id="SequenceFlow_16gzt2m" sourceRef="FirstServiceTask" targetRef="SecondServiceTask" />
+    <bpmn:sequenceFlow id="SequenceFlow_1fp17al" sourceRef="StartEvent_1" targetRef="FirstServiceTask" />
+    <bpmn:sequenceFlow id="Flow_03ypc7n" sourceRef="SecondServiceTask" targetRef="ThirdServiceTask" />
+    <bpmn:sequenceFlow id="Flow_0drhci4" sourceRef="ThirdServiceTask" targetRef="EndEvent_0x6ir2l" />
     <bpmn:startEvent id="StartEvent_1">
       <bpmn:outgoing>SequenceFlow_1fp17al</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:sequenceFlow id="SequenceFlow_1fp17al" sourceRef="StartEvent_1" targetRef="LogSomethingTask" />
-    <bpmn:endEvent id="EndEvent_0x6ir2l">
-      <bpmn:incoming>SequenceFlow_16gzt2m</bpmn:incoming>
-    </bpmn:endEvent>
-    <bpmn:sequenceFlow id="SequenceFlow_16gzt2m" sourceRef="LogSomethingTask" targetRef="EndEvent_0x6ir2l" />
-    <bpmn:serviceTask id="LogSomethingTask" name="Log something" camunda:delegateExpression="${logger}">
+    <bpmn:serviceTask id="FirstServiceTask" name="First Service" camunda:delegateExpression="${logger}">
       <bpmn:incoming>SequenceFlow_1fp17al</bpmn:incoming>
       <bpmn:outgoing>SequenceFlow_16gzt2m</bpmn:outgoing>
     </bpmn:serviceTask>
+    <bpmn:endEvent id="EndEvent_0x6ir2l">
+      <bpmn:incoming>Flow_0drhci4</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="Activity_0a8mclm" triggeredByEvent="true">
+      <bpmn:startEvent id="BPMNErrorOccuredStartEvent" name="BPMN Error occured">
+        <bpmn:outgoing>Flow_14xj9ei</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="ErrorEventDefinition_0psb7rw" errorRef="Error_1v0mlxc" camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
+      </bpmn:startEvent>
+      <bpmn:sequenceFlow id="Flow_14xj9ei" sourceRef="BPMNErrorOccuredStartEvent" targetRef="StartErrorHandlingEvent" />
+      <bpmn:intermediateThrowEvent id="StartErrorHandlingEvent" name="Start Error Handling">
+        <bpmn:incoming>Flow_14xj9ei</bpmn:incoming>
+        <bpmn:outgoing>Flow_0z98ag3</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageEventDefinition_1ea6fwf" messageRef="Message_0jhj0x0" camunda:delegateExpression="${starter}" />
+      </bpmn:intermediateThrowEvent>
+      <bpmn:sequenceFlow id="Flow_0z98ag3" sourceRef="StartErrorHandlingEvent" targetRef="ErrorHandlingCompletedEvent" />
+      <bpmn:intermediateCatchEvent id="ErrorHandlingCompletedEvent" name="Error Handling completed">
+        <bpmn:incoming>Flow_0z98ag3</bpmn:incoming>
+        <bpmn:outgoing>Flow_1ctdkm1</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageEventDefinition_0n0ho3q" messageRef="Message_1l30vaq" />
+      </bpmn:intermediateCatchEvent>
+      <bpmn:endEvent id="EndedAfterErrorEndEvent" name="Ended after Error">
+        <bpmn:incoming>Flow_1ctdkm1</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_1ctdkm1" sourceRef="ErrorHandlingCompletedEvent" targetRef="EndedAfterErrorEndEvent" />
+      <bpmn:association id="Association_11edtoz" sourceRef="ErrorHandlingCompletedEvent" targetRef="TextAnnotation_0ebyjv8" />
+    </bpmn:subProcess>
+    <bpmn:serviceTask id="SecondServiceTask" name="Second Service" camunda:delegateExpression="${logger}">
+      <bpmn:incoming>SequenceFlow_16gzt2m</bpmn:incoming>
+      <bpmn:outgoing>Flow_03ypc7n</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="ThirdServiceTask" name="Third Service" camunda:delegateExpression="${logger}">
+      <bpmn:incoming>Flow_03ypc7n</bpmn:incoming>
+      <bpmn:outgoing>Flow_0drhci4</bpmn:outgoing>
+    </bpmn:serviceTask>
   </bpmn:process>
+  <bpmn:process id="Process_ManualErrorHandling" name="Manual Error Handling" isExecutable="true">
+    <bpmn:startEvent id="BPMNErrorRequiresHandlingStartEvent" name="BPMN Error requires handling">
+      <bpmn:outgoing>Flow_0dzvu06</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_162u86a" messageRef="Message_0jhj0x0" />
+    </bpmn:startEvent>
+    <bpmn:userTask id="ResolveErrorTask" name="Resolve Error">
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="errorMessage" label="Error Message" type="string" />
+          <camunda:formField id="sourceActivity" label="Source Activity" type="string" />
+          <camunda:formField id="continuation" label="Continue from Source Activity?" type="boolean" defaultValue="true" />
+          <camunda:formField id="comment" label="Comment" type="string" defaultValue="Error resolved manually" />
+        </camunda:formData>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_0dzvu06</bpmn:incoming>
+      <bpmn:outgoing>Flow_1bmnijd</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="ContinuationOrEndGateway" name="Continuation or End?" default="ContinueSequenceFlow">
+      <bpmn:incoming>Flow_1bmnijd</bpmn:incoming>
+      <bpmn:outgoing>EndSequenceFlow</bpmn:outgoing>
+      <bpmn:outgoing>ContinueSequenceFlow</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="OriginalProcessContinuedEndEvent" name="Original Process continued">
+      <bpmn:incoming>ContinueSequenceFlow</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1a0hbjz" camunda:delegateExpression="" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="OriginalProcessEndedEndEvent" name="Original process ended">
+      <bpmn:incoming>EndSequenceFlow</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1b7nfh1" messageRef="Message_1l30vaq" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_0dzvu06" sourceRef="BPMNErrorRequiresHandlingStartEvent" targetRef="ResolveErrorTask" />
+    <bpmn:sequenceFlow id="Flow_1bmnijd" sourceRef="ResolveErrorTask" targetRef="ContinuationOrEndGateway" />
+    <bpmn:sequenceFlow id="EndSequenceFlow" name="End" sourceRef="ContinuationOrEndGateway" targetRef="OriginalProcessEndedEndEvent">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!continuation}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="ContinueSequenceFlow" name="Continue" sourceRef="ContinuationOrEndGateway" targetRef="OriginalProcessContinuedEndEvent" />
+  </bpmn:process>
+  <bpmn:message id="Message_0jhj0x0" name="Message_StartErrorHandling" />
+  <bpmn:error id="Error_1v0mlxc" name="Error_1ro2gs8" />
+  <bpmn:message id="Message_1l30vaq" name="Message_ErrorHandlingCompleted" />
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
-    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="vanilla-camunda-template-process">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0e80ief">
+      <bpmndi:BPMNShape id="Participant_0aqotd0_di" bpmnElement="RequestProcessingParticipant" isHorizontal="true">
+        <dc:Bounds x="130" y="54" width="750" height="466" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="SequenceFlow_16gzt2m_di" bpmnElement="SequenceFlow_16gzt2m">
-        <di:waypoint x="370" y="117" />
-        <di:waypoint x="432" y="117" />
+        <di:waypoint x="380" y="117" />
+        <di:waypoint x="420" y="117" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="SequenceFlow_1fp17al_di" bpmnElement="SequenceFlow_1fp17al">
-        <di:waypoint x="215" y="117" />
-        <di:waypoint x="270" y="117" />
+        <di:waypoint x="225" y="117" />
+        <di:waypoint x="280" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_03ypc7n_di" bpmnElement="Flow_03ypc7n">
+        <di:waypoint x="520" y="117" />
+        <di:waypoint x="570" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0drhci4_di" bpmnElement="Flow_0drhci4">
+        <di:waypoint x="670" y="117" />
+        <di:waypoint x="722" y="117" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent_1">
-        <dc:Bounds x="179" y="99" width="36" height="36" />
+        <dc:Bounds x="189" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_19reg6c_di" bpmnElement="FirstServiceTask">
+        <dc:Bounds x="280" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="EndEvent_0x6ir2l_di" bpmnElement="EndEvent_0x6ir2l">
-        <dc:Bounds x="432" y="99" width="36" height="36" />
+        <dc:Bounds x="722" y="99" width="36" height="36" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_19reg6c_di" bpmnElement="LogSomethingTask">
-        <dc:Bounds x="270" y="77" width="100" height="80" />
+      <bpmndi:BPMNShape id="Activity_1xj9i0c_di" bpmnElement="SecondServiceTask">
+        <dc:Bounds x="420" y="77" width="100" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1418zlc_di" bpmnElement="ThirdServiceTask">
+        <dc:Bounds x="570" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_02bq0df_di" bpmnElement="Activity_0a8mclm" isExpanded="true">
+        <dc:Bounds x="170" y="210" width="680" height="280" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_14xj9ei_di" bpmnElement="Flow_14xj9ei">
+        <di:waypoint x="246" y="380" />
+        <di:waypoint x="302" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0z98ag3_di" bpmnElement="Flow_0z98ag3">
+        <di:waypoint x="338" y="380" />
+        <di:waypoint x="402" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1ctdkm1_di" bpmnElement="Flow_1ctdkm1">
+        <di:waypoint x="438" y="380" />
+        <di:waypoint x="502" y="380" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_1fvrm76_di" bpmnElement="BPMNErrorOccuredStartEvent">
+        <dc:Bounds x="210" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="198" y="405" width="61" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1gw140d_di" bpmnElement="StartErrorHandlingEvent">
+        <dc:Bounds x="302" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="294" y="325" width="52" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1gk4bfz_di" bpmnElement="ErrorHandlingCompletedEvent">
+        <dc:Bounds x="402" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="384" y="325" width="72" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0lksehh_di" bpmnElement="EndedAfterErrorEndEvent">
+        <dc:Bounds x="502" y="362" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="477" y="405" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_11edtoz_di" bpmnElement="Association_11edtoz">
+        <di:waypoint x="437" y="374" />
+        <di:waypoint x="600" y="313" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Participant_1iask8v_di" bpmnElement="ManualErrorHandlingParticipant" isHorizontal="true">
+        <dc:Bounds x="130" y="560" width="600" height="250" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_0dzvu06_di" bpmnElement="Flow_0dzvu06">
+        <di:waypoint x="238" y="690" />
+        <di:waypoint x="290" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1bmnijd_di" bpmnElement="Flow_1bmnijd">
+        <di:waypoint x="390" y="690" />
+        <di:waypoint x="445" y="690" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1j4c67u_di" bpmnElement="EndSequenceFlow">
+        <di:waypoint x="470" y="665" />
+        <di:waypoint x="470" y="628" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="475" y="644" width="20" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0rxp6lh_di" bpmnElement="ContinueSequenceFlow">
+        <di:waypoint x="495" y="690" />
+        <di:waypoint x="602" y="690" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="526" y="672" width="45" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Event_1od0n2x_di" bpmnElement="BPMNErrorRequiresHandlingStartEvent">
+        <dc:Bounds x="202" y="672" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="178" y="715" width="85" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0zuxaf6_di" bpmnElement="ResolveErrorTask">
+        <dc:Bounds x="290" y="650" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_0eqi8wq_di" bpmnElement="ContinuationOrEndGateway" isMarkerVisible="true">
+        <dc:Bounds x="445" y="665" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="432" y="725" width="76" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ta6ay8_di" bpmnElement="OriginalProcessContinuedEndEvent">
+        <dc:Bounds x="602" y="672" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="580" y="715" width="81" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1e082dg_di" bpmnElement="OriginalProcessEndedEndEvent">
+        <dc:Bounds x="452" y="592" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="362" y="597" width="80" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0ebyjv8_di" bpmnElement="TextAnnotation_0ebyjv8">
+        <dc:Bounds x="600" y="280" width="240" height="105" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_19w6rm0_di" bpmnElement="Flow_19w6rm0">
+        <di:waypoint x="470" y="592" />
+        <di:waypoint x="470" y="540" />
+        <di:waypoint x="420" y="540" />
+        <di:waypoint x="420" y="398" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1tu2do5_di" bpmnElement="Flow_1tu2do5">
+        <di:waypoint x="320" y="398" />
+        <di:waypoint x="320" y="580" />
+        <di:waypoint x="220" y="580" />
+        <di:waypoint x="220" y="672" />
+      </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
